@@ -15,3 +15,23 @@
 'use strict';
 
 const he	= require('he');
+
+
+module.exports	= {
+	clean,
+	escape	: html => he.escape(html),
+	encode	: html => he.encode(html),
+	unescape: html => he.decode(html),
+	decode	: html => he.decode(html),
+
+	// cleanStyle	 : cssXss.cleanStyle,
+
+	get voidTags(){return VOID_TAGS},
+	get blackList(){return BLACKLIST}
+};
+
+
+
+// HTML seeker
+//=include html-seeker.js
+
