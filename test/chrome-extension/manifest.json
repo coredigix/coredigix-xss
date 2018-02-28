@@ -1,0 +1,28 @@
+{
+    "manifest_version": 2,
+    "name": "xss tester",
+    "background": {
+        "scripts": ["background.js"],
+        "persistent": true
+    },
+    "browser_action": {
+        "default_icon": "icon19.png"
+    },
+    "permissions": [
+        "webRequest",
+        "webRequestBlocking",
+        "contextMenus",
+        "tabs",
+        "activeTab",
+        "<all_urls>",
+        "notifications",
+        "bookmarks",
+        "downloads",
+        "clipboardRead",
+        "webNavigation",
+        "tabCapture",
+        "clipboardWrite",
+        "clipboardRead"
+    ],
+    "version": "0.0.1"
+}
