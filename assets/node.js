@@ -16,9 +16,12 @@
 
 const he	= require('he');
 
+// params
+//=include params.js
+
 
 module.exports	= {
-	clean,
+	clean	: htmlClean,
 	escape	: html => he.escape(html),
 	encode	: html => he.encode(html),
 	unescape: html => he.decode(html),
@@ -30,7 +33,8 @@ module.exports	= {
 	get blackList(){return BLACKLIST}
 };
 
-
+// extra
+//= inculde extra.js
 
 // HTML seeker
 //=include html-seeker.js

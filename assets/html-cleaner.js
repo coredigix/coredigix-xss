@@ -1,15 +1,15 @@
 
 
 
-const	VOID_TAGS			= ['img', 'br', 'hr', 'input', 'area', 'col', 'command', 'embed', 'keygen', 'link', 'meta', 'param', 'source', 'track', 'wbr', 'base'],
-		BLACKLIST			= ['script', 'input', 'link', 'meta', 'base', 'style', 'frame', 'noscript'],
-		RM_TAG_ONLY			= ['html', 'head', 'body', 'doctype', 'iframe'],
+const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base'.split(','),
+		BLACKLIST			= 'script,input,link,meta,base,style,frame,noscript,canvas'.split(','),
+		RM_TAG_ONLY			= 'html,head,body,doctype,iframe'.split(','),
 		WHITE_ATTRIBUTES	= {
 			'*'		: ['style'],	// all tags
-			'img'	: ['src', 'data-src', 'width', 'height']
-			'a'		: ['href', 'target']
+			'img'	: ['src', 'srcset', 'width', 'height']
+			'a'		: ['href', 'hreflang', 'target', 'download']
 		},
-		lowLevelTags	= ['b', 'u', 'i', 'font'],
+		lowLevelTags	= 'a,b,u,i,var,font,abbr,address,bdi,br,canvas,caption,center,cite,code,em,hr,label,legend,mark,strong,sub,sup,'.split(','),
 
 		JS_ATTR_CHECK	= /\bjavascript\s*\:/i,
 
@@ -25,7 +25,7 @@ const TAG_HELPER = {
 		};
 		htmlAttrSeeker(this.body, (attrName, attrValue) => {
 			if(attrName === 'style')
-				attrs[STYLE_ATTR_SYMB]	= parseStyle(attrValue);
+				attrs[STYLE_ATTR_SYMB]	= attrValue;
 			else
 				attrs[attrName]	= attrValue;
 		} );
@@ -49,18 +49,34 @@ const TAG_HELPER = {
 			}
 			else delete attrs[attrName];
 		});
+		// if is not a lowLevelTag and contains no attribute
+		if(
+			Object.keys(attrs).length === 0
+			&& lowLevelTags.indexOf(this.tagName) === -1
+		){
+			this[REMOVE_TAG_SYMB] = true;
+		}
 	},
 	cleanStyle : function(){
 		//TODO
 	};
 	get html(){
-		var html	= '<' + this.tagName;
 		var attrs	= this.attributes;
-		for(var i in attrs){
-			if(i === 'style')
-				html += ' style="' + he.escape(_joinStyle(attrs.style)) + '"';
-			else
-				html += ' ' + he.escape(i) + '="' + he.escape(attrs[i] + '') + '"';
+		var attrKies= Object.keys(attrs);
+		var str;
+		if(attrKies.length === 0)
+			return lowLevelTags.indexOf(this.tagName) === -1 ? '' : '<' + this.tagName + '>';
+		else {
+			var html	= '<' + this.tagName;
+			attrKies.forEach(attr => {
+				if(attr === 'style'){
+					str	= _joinStyle(attrs.style);
+					if(str !== '')
+						html += ' style="' + he.escape(str) + '"';
+				}
+				else if(attrs[attr])
+					html += ' ' + he.escape(attr) + '="' + he.escape(attrs[attr] + '') + '"';
+			});
 		}
 		return html;
 	}
