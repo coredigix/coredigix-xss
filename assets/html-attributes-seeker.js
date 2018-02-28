@@ -17,7 +17,7 @@ function htmlAttrSeeker(tagBody, cb){
 			attrName	= false;
 			state		= 0;
 		} else if(state === 1) {
-			attrName	= tagBody.substring(lastPos, pos);
+			attrName	= tagBody.substring(lastPos, pos).toLowerCase();
 			state = 2;
 		}
 	});

@@ -1,27 +1,48 @@
 
-
-
 const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base'.split(','),
 		BLACKLIST			= 'script,input,link,meta,base,style,frame,noscript,canvas'.split(','),
 		RM_TAG_ONLY			= 'html,head,body,doctype,iframe'.split(','),
 		WHITE_ATTRIBUTES	= {
 			'*'		: ['style'],	// all tags
-			'img'	: ['src', 'srcset', 'width', 'height']
-			'a'		: ['href', 'hreflang', 'target', 'download']
+			'img'	: ['src', 'srcset', 'width', 'height'],
+			'a'		: ['href', 'hreflang', 'target', 'download'],
+			'font'	: ['color', 'face', 'size']
+		},
+		WHITE_STYLES	= {
+			'*'	: /^(?:background|border|box|break|clear|color|display|font|height|letter|lighting|list-style|margin|max-height|max-width|min-height|min-width|padding|text|width|word)/i
 		},
 		lowLevelTags	= 'a,b,u,i,var,font,abbr,address,bdi,br,canvas,caption,center,cite,code,em,hr,label,legend,mark,strong,sub,sup,'.split(','),
 
 		JS_ATTR_CHECK	= /\bjavascript\s*\:/i,
 
 		REMOVE_TAG_SYMB	= Symbol(),
-		STYLE_ATTR_SYMB	= Symbol();
+		STYLE_ATTR_SYMB	= Symbol(),
+		OPTIONS_SYMB	= Symbol(),
+
+		DEFAULT_OPTIONS = {
+			comments	: false,
+			/**
+			 * style	= false, // do not include style tag
+			 * style	= true, // include style tag, do default filter
+			 * style	= {
+			 * 		@return {undefined} do default filter
+			 * 		@return {false} remove this attribute
+			 * 		@return {string} set this as the attribute value
+			 * 		onAttr	: function(name, value){}
+			 *
+			 * 		// do aditional modifications on the attributes
+			 * 		onEnd	: function(attrs){}
+			 * }
+			 */
+			img			: true, // keep images
+		};
 
 
 const TAG_HELPER = {
 	// get tagAttributes
 	get attributes(){
 		var attrs	= {
-			style	: styleParser //TODO
+			style	: initStyle
 		};
 		htmlAttrSeeker(this.body, (attrName, attrValue) => {
 			if(attrName === 'style')
@@ -36,38 +57,43 @@ const TAG_HELPER = {
 		return attrs;
 	},
 	clean	: function(){
-		var attrs	= this.attributes;
-		Object.keys(attrs).forEach(attrName => {
+		// SVG Tag
+		if(this.svg === true){}
+		// HTML Tag
+		else {
+			var attrs		= this.attributes;
+
+			var whiteList	= this[OPTIONS_SYMB].acceptedAttr || WHITE_ATTRIBUTES;
+			whiteList		= whiteList[this.tagName] || whiteList['*'];
+			Object.keys(attrs).forEach(attrName => {
+				if(whiteList.indexOf(attrName) !== -1){
+					if(attrName === 'style')
+						this.cleanStyle();
+					else if(JS_ATTR_CHECK.test(attrs[attrName]))
+						delete attrs[attrName];
+				}
+				else delete attrs[attrName];
+			});
+			// if is not a lowLevelTag and contains no attribute
 			if(
-				(WHITE_ATTRIBUTES[this.tagName] || WHITE_ATTRIBUTES['*'])
-					.indexOf(attrName) !== -1
+				Object.keys(attrs).length === 0
+				&& lowLevelTags.indexOf(this.tagName) === -1
 			){
-				if(attrName === 'style')
-					this.cleanStyle();
-				else if(JS_ATTR_CHECK.test(attrs[attrName]))
-					delete attrs[attrName];
+				this[REMOVE_TAG_SYMB] = true;
 			}
-			else delete attrs[attrName];
-		});
-		// if is not a lowLevelTag and contains no attribute
-		if(
-			Object.keys(attrs).length === 0
-			&& lowLevelTags.indexOf(this.tagName) === -1
-		){
-			this[REMOVE_TAG_SYMB] = true;
 		}
 	},
-	cleanStyle : function(){
-		//TODO
-	};
+	cleanStyle : cleanStyle,
 	get html(){
 		var attrs	= this.attributes;
 		var attrKies= Object.keys(attrs);
 		var str;
+		var html;
+		var closeTag	= this.tagNameOrigine.endsWith('/>') ? '/>' : '>';
 		if(attrKies.length === 0)
-			return lowLevelTags.indexOf(this.tagName) === -1 ? '' : '<' + this.tagName + '>';
+			html	= lowLevelTags.indexOf(this.tagName) === -1 ? '' : '<' + this.tagName + closeTag;
 		else {
-			var html	= '<' + this.tagName;
+			html	= '';
 			attrKies.forEach(attr => {
 				if(attr === 'style'){
 					str	= _joinStyle(attrs.style);
@@ -77,6 +103,10 @@ const TAG_HELPER = {
 				else if(attrs[attr])
 					html += ' ' + he.escape(attr) + '="' + he.escape(attrs[attr] + '') + '"';
 			});
+			if(html !== '')
+				html	= '<' + this.tagName + html + closeTag;
+			else if(lowLevelTags.indexOf(this.tagName) !== -1)
+				html	= '<' + this.tagName + closeTag;
 		}
 		return html;
 	}
@@ -92,20 +122,20 @@ function _joinStyle(style){
 /**
  * clean HTML
  * @param  {String} html    				HTML to cleanup
- * @param  {boolean} options.style		= true 		if keep style attribute
- * @param  {boolean} options.css		= false 	if keep style tag & class attribute
  * @param  {boolean} options.img		= true 		if keep img tag
  * @param  {boolean} options.comments	= false 	if keep HTML comments
  * @param  {function} options.onTag		= true 		if include style attribute
- * @param  {boolean} options.style		= true 		if include style attribute
+ * @param  {function} options.acceptedAttr 			accepted attributes for each tag
+ * @param  {function} options.acceptedStyle 		accepted style attributes for each tag
  */
 function htmlClean(html, options){
 	var stack	= [];
 	var result	= '';
-	var isEndTag, isVoidTag, tagWrapper;
+	var isEndTag, isVoidTag, tagWrapper, isBlackList;
 	var cbResponse;
 	var errors	= []; // store parsing errors
 	// HTML comment tag
+	if(!options) options = DEFAULT_OPTIONS;
 	if(options.comments !== true)
 		html	= html.replace(/<!--[\s\S]*?-->/g, '');
 
@@ -150,7 +180,16 @@ function htmlClean(html, options){
 				isVoidTag	= !isEndTag && (VOID_TAGS.indexOf(tagName) != -1 || tagBody.endsWith('/>'));
 				isBlackList	= BLACKLIST.indexOf(tagName) != -1;
 				// tag wrapper
-				tagWrapper = {};
+				tagWrapper = {
+					[OPTIONS_SYMB]	: options
+				};
+				// parentNode
+				if(stack.length > 0)
+					Object.defineProperty(tagWrapper, 'parentNode', {value: stack[stack.length - 1]});
+				// if it SVG or SVG element
+				if(tagName === 'svg' || tagWrapper.parentNode && tagWrapper.parentNode.svg === true)
+					tagWrapper.svg = true;
+				// other properties
 				Object.defineProperties(tagWrapper, {
 					tagName			: {value : tagName},
 					tagNameOrigine	: {value : tagNameOrigine},
@@ -209,5 +248,6 @@ function htmlClean(html, options){
 			if(rmTagBody === false)
 				result += text;
 		}
-	)
+	);
+	return result;
 }

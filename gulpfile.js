@@ -21,3 +21,14 @@ gulp.task('node', () => {
 		.pipe(minify())
 		.pipe(gulp.dest("dist/"));
 });
+
+
+gulp.task('brighter', () => {
+	gulp.src('assets/brighter-plugin.js')
+		.pipe(include({
+			hardFail: true
+		}))
+		.pipe(rename('coredigix-xss-brighter.js'))
+		// .pipe(minify())
+		.pipe(gulp.dest("dist/"));
+});

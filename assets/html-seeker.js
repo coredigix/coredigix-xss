@@ -21,7 +21,9 @@ function HTMLSeeker(html, onTag, onText){
 	var lastPos	= 0,
 		lastPos2= 0,
 		lastPos3= false,
-		scriptStyleLen;
+		scriptStyleLen,
+		tagName,
+		tagNameLC;
 
 	for(var pos=0; pos < len; ++pos){
 		char	= html.charAt(pos);

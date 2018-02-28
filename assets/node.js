@@ -30,12 +30,15 @@ module.exports	= {
 	// cleanStyle	 : cssXss.cleanStyle,
 
 	get voidTags(){return VOID_TAGS},
-	get blackList(){return BLACKLIST}
+	get blackList(){return BLACKLIST},
+	get whiteAttributes(){return WHITE_ATTRIBUTES},
+	get whiteStyle(){return WHITE_STYLES}
 };
-
-// extra
-//= inculde extra.js
 
 // HTML seeker
 //=include html-seeker.js
+//=include html-attributes-seeker.js
+//=include html-cleaner.js
+//=include style-parser.js
+//=include style-cleaner.js
 
