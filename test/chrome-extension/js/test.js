@@ -19,7 +19,7 @@ lst = [
 			<div> end div <b> is ho ho </b></div>
 		</div>
 	</div>`,
-	`<font color:"#cccccc" data-tt="hoho">test font color <i> and i </i></font>`,
+	`<font color="#cccccc" data-tt="hoho">test font color <i> and i </i></font>`,
 	`Lorem ipsum dolor <b><b>sit</b> amet</b>, 
 		<div>
 			<div>
@@ -29,12 +29,19 @@ lst = [
 			<div>
 		<div>
 	end of test`,
-	`this is a <a href="http://example.com">link</a>
+	`this is a <a href="http://example.com" style="color:red; content:some content">link</a>
 	<a href="kkkk" target="dsfsdf"
 		 class="hello sdfsdf sdf" attr ="qkjsd" jjsdjj   =  sdkjfhsd>
 		  lorem <i>kkk</i> </a>`,
 	`test images <img src="https://example.com/blank.png" width="748" height="845">
-		<div width="4584" height="lll"><div>the seconde div shoold be removed</div></div>`
+		<div width="4584" height="lll"><div>the seconde div shoold be removed</div></div>`,
+	`test <b> svg </b> <div> <div> </div> </div>
+		<svg> <circle x="45" y = 415 /> Lorem <kkk>
+				<div attr="this attr mast not be removed"> jkk </div>
+		</svg> 
+		<div class="this shoold be removed" style='border:5px solid #ccc'> hello </div>
+		end.
+		`
 ];
 
 title('General tests:');

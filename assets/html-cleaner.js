@@ -4,9 +4,9 @@ const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,par
 		RM_TAG_ONLY			= 'html,head,body,doctype,iframe'.split(','),
 		WHITE_ATTRIBUTES	= {
 			'*'		: ['style'],	// all tags
-			'img'	: ['src', 'srcset', 'width', 'height'],
-			'a'		: ['href', 'hreflang', 'target', 'download'],
-			'font'	: ['color', 'face', 'size']
+			'img'	: ['style', 'src', 'srcset', 'width', 'height'],
+			'a'		: ['style', 'href', 'hreflang', 'target', 'download'],
+			'font'	: ['style', 'color', 'face', 'size']
 		},
 		WHITE_STYLES	= {
 			'*'	: /^(?:background|border|box|break|clear|color|display|font|height|letter|lighting|list-style|margin|max-height|max-width|min-height|min-width|padding|text|width|word)/i
@@ -41,9 +41,8 @@ const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,par
 const TAG_HELPER = {
 	// get tagAttributes
 	get attributes(){
-		var attrs	= {
-			style	: initStyle
-		};
+		var attrs	= {};
+		Object.defineProperty(attrs, 'style', {get: initStyle, configurable : true, enumerable: true});
 		htmlAttrSeeker(this.body, (attrName, attrValue) => {
 			if(attrName === 'style')
 				attrs[STYLE_ATTR_SYMB]	= attrValue;
@@ -52,7 +51,8 @@ const TAG_HELPER = {
 		} );
 		Object.defineProperty(this, 'attributes', {
 			value	: attrs,
-			writable: true
+			writable: true,
+			enumerable: true
 		});
 		return attrs;
 	},
@@ -65,6 +65,7 @@ const TAG_HELPER = {
 
 			var whiteList	= this[OPTIONS_SYMB].acceptedAttr || WHITE_ATTRIBUTES;
 			whiteList		= whiteList[this.tagName] || whiteList['*'];
+			// other attributes
 			Object.keys(attrs).forEach(attrName => {
 				if(whiteList.indexOf(attrName) !== -1){
 					if(attrName === 'style')
@@ -72,7 +73,9 @@ const TAG_HELPER = {
 					else if(JS_ATTR_CHECK.test(attrs[attrName]))
 						delete attrs[attrName];
 				}
-				else delete attrs[attrName];
+				else{
+					delete attrs[attrName];
+				}
 			});
 			// if is not a lowLevelTag and contains no attribute
 			if(
@@ -185,7 +188,7 @@ function htmlClean(html, options){
 				};
 				// parentNode
 				if(stack.length > 0)
-					Object.defineProperty(tagWrapper, 'parentNode', {value: stack[stack.length - 1]});
+					Object.defineProperty(tagWrapper, 'parentNode', {value: stack[stack.length - 1], enumerable: true});
 				// if it SVG or SVG element
 				if(tagName === 'svg' || tagWrapper.parentNode && tagWrapper.parentNode.svg === true)
 					tagWrapper.svg = true;
@@ -199,7 +202,7 @@ function htmlClean(html, options){
 					isBlackList		: {value : isBlackList}
 				});
 				if(tagContent)
-					Object.defineProperty(tagWrapper, 'content', {value: tagContent});
+					Object.defineProperty(tagWrapper, 'content', {value: tagContent, enumerable: true});
 				Object.setPrototypeOf(tagWrapper, TAG_HELPER);
 				// get user response
 				if(rmTagBody === false){

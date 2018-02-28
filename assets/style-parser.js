@@ -1,18 +1,17 @@
 /**
  * init style attribute
  */
-function initStyle(){console.log('---- init style')
+function initStyle(){
 	var result	= {};
 	var style	= this[STYLE_ATTR_SYMB];
 	if(style){
 		// remove comments
 		style = style.replace(/\/\*[\s\S]*?\*\//, '');
-		console.log('---', style)
 		styleParser(style, (n, v) => result[n] = v);
 	}
-	console.log('>>stl>>', result)
 	// add to attribute
-	this.style	= result;
+	Object.defineProperty(this, 'style', {value: result, configurable: true, enumerable: true});
+	return result;
 }
 
 /** style parser */
