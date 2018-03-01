@@ -1,7 +1,7 @@
 
-const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base'.split(','),
-		BLACKLIST			= 'script,input,link,meta,base,style,frame,noscript,canvas'.split(','),
-		RM_TAG_ONLY			= 'html,head,body,doctype,iframe'.split(','),
+const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base,circle,path'.split(','),
+		BLACKLIST			= 'title,script,input,link,meta,base,style,frame,noscript,canvas'.split(','),
+		RM_TAG_ONLY			= 'html,head,body,!doctype,iframe'.split(','),
 		WHITE_ATTRIBUTES	= {
 			'*'		: ['style'],	// all tags
 			'img'	: ['style', 'src', 'srcset', 'width', 'height'],
@@ -12,6 +12,8 @@ const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,par
 			'*'	: /^(?:background|border|box|break|clear|color|display|font|height|letter|lighting|list-style|margin|max-height|max-width|min-height|min-width|padding|text|width|word)/i
 		},
 		lowLevelTags	= 'a,b,u,i,var,font,abbr,address,bdi,br,canvas,caption,center,cite,code,em,hr,label,legend,mark,strong,sub,sup,'.split(','),
+		// accept those tags with
+		ACCEPT_TAGS		= 'svg'.split(','),
 
 		JS_ATTR_CHECK	= /\bjavascript\s*\:/i,
 
@@ -57,12 +59,14 @@ const TAG_HELPER = {
 		return attrs;
 	},
 	clean	: function(){
-		// SVG Tag
-		if(this.svg === true){}
-		// HTML Tag
+		var attrs		= this.attributes;
+		if(this.svg){
+			Object.keys(attrs).forEach(attrName => {
+				if(!attrs[attrName] || JS_ATTR_CHECK.test(attrs[attrName]))
+					delete attrs[attrName];
+			});
+		}
 		else {
-			var attrs		= this.attributes;
-
 			var whiteList	= this[OPTIONS_SYMB].acceptedAttr || WHITE_ATTRIBUTES;
 			whiteList		= whiteList[this.tagName] || whiteList['*'];
 			// other attributes
@@ -92,9 +96,9 @@ const TAG_HELPER = {
 		var attrKies= Object.keys(attrs);
 		var str;
 		var html;
-		var closeTag	= this.tagNameOrigine.endsWith('/>') ? '/>' : '>';
+		var closeTag	= this.body.endsWith('/>') ? ' />' : '>';
 		if(attrKies.length === 0)
-			html	= lowLevelTags.indexOf(this.tagName) === -1 ? '' : '<' + this.tagName + closeTag;
+			html	= this.svg || lowLevelTags.indexOf(this.tagName) !== -1 ? '<' + this.tagName + closeTag : '';
 		else {
 			html	= '';
 			attrKies.forEach(attr => {
@@ -108,7 +112,7 @@ const TAG_HELPER = {
 			});
 			if(html !== '')
 				html	= '<' + this.tagName + html + closeTag;
-			else if(lowLevelTags.indexOf(this.tagName) !== -1)
+			else if(this.svg || lowLevelTags.indexOf(this.tagName) !== -1)
 				html	= '<' + this.tagName + closeTag;
 		}
 		return html;
@@ -127,9 +131,10 @@ function _joinStyle(style){
  * @param  {String} html    				HTML to cleanup
  * @param  {boolean} options.img		= true 		if keep img tag
  * @param  {boolean} options.comments	= false 	if keep HTML comments
+ * @param  {boolean} options.keepBlanks	= false		keep blackspaces outside <pre> tag or remove them
  * @param  {function} options.onTag		= true 		if include style attribute
- * @param  {function} options.acceptedAttr 			accepted attributes for each tag
- * @param  {function} options.acceptedStyle 		accepted style attributes for each tag
+ * @param  {Object} options.acceptedAttr 			accepted attributes for each tag
+ * @param  {Object} options.acceptedStyle 		accepted style attributes for each tag
  */
 function htmlClean(html, options){
 	var stack	= [];
@@ -151,30 +156,41 @@ function htmlClean(html, options){
 			// flags
 			isEndTag	= tagNameOrigine.startsWith('/');
 			if(isEndTag){
-				tagName		= tagName.substr(0);
+				tagName		= tagName.substr(1);
 				// get the correct opening tag
 				do{
 					tagWrapper	= stack.pop();
 					if(!tagWrapper || tagWrapper.tagName === tagName) break;
-
 					errors.push({tag: tagName, msg: 'incorrect closing tag'});
-					if(rmTagBody === false){
-						if(lowLevelTags.indexOf(tagWrapper.tagName) === -1){
-							if(lowLevelTags.indexOf(tagName) === -1)
+					// if parent tag is greater then current tag
+					if(lowLevelTags.indexOf(tagName) !== -1 && lowLevelTags.indexOf(tagWrapper.tagName) === -1){
+						// just ignore it
+						stack.push(tagWrapper);
+						tagWrapper = null;
+						break;
+					}
+					else if(rmTagBody === false){
+						if(tagWrapper[REMOVE_TAG_SYMB] !== true){
+							if(lowLevelTags.indexOf(tagWrapper.tagName) === -1){
+								if(lowLevelTags.indexOf(tagName) === -1)
+									result += '</' + tagWrapper.tagName + '>';
+								else
+									errors.push({tag: tagName, msg: 'closing tag removed'});
+							}
+							else{
 								result += '</' + tagWrapper.tagName + '>';
-							else
-								errors.push({tag: tagName, msg: 'closing tag removed'});
+								errors.push({tag: tagWrapper.tagName, msg: 'inclosed tag'});
+							}
 						}
-						else{
-							result += '</' + tagWrapper.tagName + '>';
-							errors.push({tag: tagWrapper.tagName, msg: 'inclosed tag'});
-						}
+					}
+					else{
+						if(tagWrapper === rmTagBody)
+							rmTagBody = false;
 					}
 				} while(true);
 				if(tagWrapper){
-					if(tagWrapper === rmTagBody) { // remove this tagBody and content
+					if(tagWrapper === rmTagBody) // remove this tagBody and content
 						rmTagBody = false;
-					}
 					else if(tagWrapper[REMOVE_TAG_SYMB] === true){} // remove this tag
 					else result += '</' + tagWrapper.tagName + '>';
 				}
@@ -197,7 +213,6 @@ function htmlClean(html, options){
 					tagName			: {value : tagName},
 					tagNameOrigine	: {value : tagNameOrigine},
 					body			: {value : tagBody},
-					isEndTag		: {value : isEndTag},
 					isVoidTag		: {value : isVoidTag},
 					isBlackList		: {value : isBlackList}
 				});
@@ -213,7 +228,8 @@ function htmlClean(html, options){
 						tagWrapper[REMOVE_TAG_SYMB]	= true;
 					else if(typeof cbResponse === 'string'){ // replace all tag and tagBody with this text (empty text to remove it)
 						response += cbResponse;
-						rmTagBody	= tagWrapper;
+						if(tagWrapper.isVoidTag !== true)
+							rmTagBody	= tagWrapper;
 					}
 					else if(typeof cbResponse === 'undefined'){ // default behaviour
 						// images
@@ -224,11 +240,14 @@ function htmlClean(html, options){
 							}
 						}
 						// blacklisted
-						else if(isBlackList)
-							rmTagBody	= tagWrapper;
+						else if(isBlackList){
+							if(tagWrapper.isVoidTag !== true)
+								rmTagBody	= tagWrapper;
+						}
 						// remove tag only
-						else if(RM_TAG_ONLY.indexOf(tagName) !== -1)
+						else if(RM_TAG_ONLY.indexOf(tagName) !== -1){
 							tagWrapper[REMOVE_TAG_SYMB]	= true;
+						}
 						// other tags
 						else {
 							tagWrapper.clean();
@@ -242,15 +261,33 @@ function htmlClean(html, options){
 					else throw new Error('uncorrect cb response');
 				}
 				// add tag to stack
-				if(isVoidTag === false)
+				if(isVoidTag === false){
+					if(rmTagBody !== false)
+						tagWrapper[REMOVE_TAG_SYMB]	= true;
 					stack.push(tagWrapper);
+				}
 			}
 		},
 		// onText
 		text => {
-			if(rmTagBody === false)
-				result += text;
+			if(rmTagBody === false){
+				if(options.keepBlanks !== true)
+					text = text.replace(/\s{2,}/g, "\n").trim();
+				if(text !== '')
+					result += ' ' + text;
+			}
 		}
 	);
+	// close openning tags
+	if(rmTagBody === false)
+		do{
+			tagWrapper	= stack.pop();
+			if(!tagWrapper) break;
+
+			if(tagWrapper[REMOVE_TAG_SYMB] !== true){
+				errors.push({tag: tagWrapper.tagName, msg: 'not closed tag, closing it'});
+				result += '</' + tagWrapper.tagName + '>';
+			}
+		} while(true);
 	return result;
 }

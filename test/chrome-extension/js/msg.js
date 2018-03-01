@@ -24,6 +24,11 @@ function title(title){
 	h1.innerText = title;
 	document.body.append(h1);
 }
+function title1(title){
+	var h1 = document.createElement('h3');
+	h1.innerText = title;
+	document.body.append(h1);
+}
 
 function title2(title){
 	var h1 = document.createElement('h2');

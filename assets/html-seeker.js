@@ -65,7 +65,7 @@ function HTMLSeeker(html, onTag, onText){
 		else if(char === '>'){
 			str		= html.substring(lastPos, pos + 1);
 			// tag name
-			tagName		= str.match(/^<[\/!]?([\w-]*)/);
+			tagName		= str.match(/^<([\/!]?[\w-]*)/);
 			if(tagName){
 				tagName	= tagName[1];
 				tagNameLC	= tagName.toLowerCase();
