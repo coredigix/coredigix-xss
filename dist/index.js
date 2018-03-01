@@ -223,6 +223,7 @@ const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,par
 		JS_ATTR_CHECK	= /\bjavascript\s*\:/i,
 
 		REMOVE_TAG_SYMB	= Symbol(),
+		REMOVE_TAG_BODY	= Symbol(),
 		STYLE_ATTR_SYMB	= Symbol(),
 		OPTIONS_SYMB	= Symbol(),
 
@@ -353,7 +354,7 @@ function htmlClean(html, options){
 		html	= html.replace(/<!--[\s\S]*?-->/g, '');
 
 	// seek HTML
-	var rmTagBody	= false;
+	var parentTag;
 	HTMLSeeker(
 		html,
 		// onTag
@@ -374,7 +375,7 @@ function htmlClean(html, options){
 						tagWrapper = null;
 						break;
 					}
-					else if(rmTagBody === false){
+					else if(tagWrapper[REMOVE_TAG_BODY] !== true){
 						if(tagWrapper[REMOVE_TAG_SYMB] !== true){
 							if(lowLevelTags.indexOf(tagWrapper.tagName) === -1){
 								if(lowLevelTags.indexOf(tagName) === -1)
@@ -388,14 +389,9 @@ function htmlClean(html, options){
 							}
 						}
 					}
-					else{
-						if(tagWrapper === rmTagBody)
-							rmTagBody = false;
-					}
 				} while(true);
 				if(tagWrapper){
-					if(tagWrapper === rmTagBody) // remove this tagBody and content
-						rmTagBody = false;
+					if(tagWrapper[REMOVE_TAG_BODY] === true){} // remove this tagBody and content
 					else if(tagWrapper[REMOVE_TAG_SYMB] === true){} // remove this tag
 					else result += '</' + tagWrapper.tagName + '>';
 				}
@@ -408,8 +404,12 @@ function htmlClean(html, options){
 					[OPTIONS_SYMB]	: options
 				};
 				// parentNode
-				if(stack.length > 0)
-					Object.defineProperty(tagWrapper, 'parentNode', {value: stack[stack.length - 1], enumerable: true});
+				if(stack.length > 0){
+					parentTag	= stack[stack.length - 1];
+					Object.defineProperty(tagWrapper, 'parentNode', {value: parentTag, enumerable: true});
+					if(parentTag[REMOVE_TAG_BODY] === true)
+						tagWrapper[REMOVE_TAG_BODY]	= true;
+				}
 				// if it SVG or SVG element
 				if(tagName === 'svg' || tagWrapper.parentNode && tagWrapper.parentNode.svg === true)
 					tagWrapper.svg = true;
@@ -425,7 +425,7 @@ function htmlClean(html, options){
 					Object.defineProperty(tagWrapper, 'content', {value: tagContent, enumerable: true});
 				Object.setPrototypeOf(tagWrapper, TAG_HELPER);
 				// get user response
-				if(rmTagBody === false){
+				if(tagWrapper[REMOVE_TAG_BODY] !== true){
 					cbResponse	= options.onTag && options.onTag(tagWrapper);
 					if(cbResponse === true) // keep the tag as it is
 						response += tagWrapper.html;
@@ -433,8 +433,7 @@ function htmlClean(html, options){
 						tagWrapper[REMOVE_TAG_SYMB]	= true;
 					else if(typeof cbResponse === 'string'){ // replace all tag and tagBody with this text (empty text to remove it)
 						response += cbResponse;
-						if(tagWrapper.isVoidTag !== true)
-							rmTagBody	= tagWrapper;
+						tagWrapper[REMOVE_TAG_BODY] = true;
 					}
 					else if(typeof cbResponse === 'undefined'){ // default behaviour
 						// images
@@ -445,10 +444,8 @@ function htmlClean(html, options){
 							}
 						}
 						// blacklisted
-						else if(isBlackList){
-							if(tagWrapper.isVoidTag !== true)
-								rmTagBody	= tagWrapper;
-						}
+						else if(isBlackList)
+							tagWrapper[REMOVE_TAG_BODY] = true;
 						// remove tag only
 						else if(RM_TAG_ONLY.indexOf(tagName) !== -1){
 							tagWrapper[REMOVE_TAG_SYMB]	= true;
@@ -466,16 +463,16 @@ function htmlClean(html, options){
 					else throw new Error('uncorrect cb response');
 				}
 				// add tag to stack
-				if(isVoidTag === false){
-					if(rmTagBody !== false)
-						tagWrapper[REMOVE_TAG_SYMB]	= true;
+				if(isVoidTag === false)
 					stack.push(tagWrapper);
-				}
 			}
 		},
 		// onText
 		text => {
-			if(rmTagBody === false){
+			if(
+				stack.length === 0
+				|| stack[stack.length - 1][REMOVE_TAG_BODY] !== true
+			){
 				if(options.keepBlanks !== true)
 					text = text.replace(/\s{2,}/g, "\n").trim();
 				if(text !== '')
@@ -484,16 +481,15 @@ function htmlClean(html, options){
 		}
 	);
 	// close openning tags
-	if(rmTagBody === false)
-		do{
-			tagWrapper	= stack.pop();
-			if(!tagWrapper) break;
+	do{
+		tagWrapper	= stack.pop();
+		if(!tagWrapper) break;
 
-			if(tagWrapper[REMOVE_TAG_SYMB] !== true){
-				errors.push({tag: tagWrapper.tagName, msg: 'not closed tag, closing it'});
-				result += '</' + tagWrapper.tagName + '>';
-			}
-		} while(true);
+		if(tagWrapper[REMOVE_TAG_BODY] !== true && tagWrapper[REMOVE_TAG_SYMB] !== true){
+			errors.push({tag: tagWrapper.tagName, msg: 'not closed tag, closing it'});
+			result += '</' + tagWrapper.tagName + '>';
+		}
+	} while(true);
 	return result;
 }
 /**

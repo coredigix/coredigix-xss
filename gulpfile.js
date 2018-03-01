@@ -30,5 +30,6 @@ gulp.task('brighter', () => {
 		}))
 		.pipe(rename('coredigix-xss-brighter.js'))
 		// .pipe(minify())
-		.pipe(gulp.dest("dist/"));
+		.pipe(gulp.dest("dist/"))
+		.pipe(gulp.dest('test/chrome-extension/js/'));
 });

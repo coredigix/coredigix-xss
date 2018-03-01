@@ -39,6 +39,8 @@ function HTMLSeeker(html, onTag, onText){
 					scriptStyle	= false;
 					lastPos 	= pos + 1;
 					tagStart	= false;
+					// send closing tag
+					onTag('/' + tagName, '/' + tagNameLC, str2);
 				}
 			}
 		}

@@ -74,10 +74,18 @@ urls.forEach(url => {
 	var xhr = new XMLHttpRequest();
 	xhr.onload = function(){
 		title1('url: ' + url);
-		title2('Origine: ');
-		addResult(xhr.responseText);
-		title2('Clean: ');
-		addResult($$.xss.clean(xhr.responseText));
+
+		var txt	= xhr.responseText;
+		if(txt){
+			var dt	= Date.now();
+			var result	= $$.xss.clean(txt);
+			dt	= Date.now() - dt;
+
+			title2('Origine: nombre de caractères: ' + txt.length);
+			addResult(txt);
+			title2('Clean: nombre de caractères: ' + result.length  + ', temp de process: ' + dt + 'ms, taille par rapport à l\'originale: ' + (result.length * 100 / txt.length).toFixed(2) + '%');
+			addResult(result);
+		}
 	}
 	xhr.open('GET', url);
 	xhr.send();

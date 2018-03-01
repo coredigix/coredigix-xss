@@ -1,6 +1,6 @@
 
-const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base,circle,path'.split(','),
-		BLACKLIST			= 'title,script,input,link,meta,base,style,frame,noscript,canvas'.split(','),
+const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base,circle,path,!doctype'.split(','),
+		BLACKLIST			= 'title,script,input,textarea,button,link,meta,base,style,frame,noscript,canvas'.split(','),
 		RM_TAG_ONLY			= 'html,head,body,!doctype,iframe'.split(','),
 		WHITE_ATTRIBUTES	= {
 			'*'		: ['style'],	// all tags
@@ -18,6 +18,7 @@ const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,par
 		JS_ATTR_CHECK	= /\bjavascript\s*\:/i,
 
 		REMOVE_TAG_SYMB	= Symbol(),
+		REMOVE_TAG_BODY	= Symbol(),
 		STYLE_ATTR_SYMB	= Symbol(),
 		OPTIONS_SYMB	= Symbol(),
 
@@ -81,8 +82,11 @@ const TAG_HELPER = {
 					delete attrs[attrName];
 				}
 			});
+			// if display = none
+			if(/^\s*none\s*$/i.test(attrs.style.display))
+				this[REMOVE_TAG_BODY] = true;
 			// if is not a lowLevelTag and contains no attribute
-			if(
+			else if(
 				Object.keys(attrs).length === 0
 				&& lowLevelTags.indexOf(this.tagName) === -1
 			){
@@ -92,28 +96,32 @@ const TAG_HELPER = {
 	},
 	cleanStyle : cleanStyle,
 	get html(){
-		var attrs	= this.attributes;
-		var attrKies= Object.keys(attrs);
-		var str;
 		var html;
-		var closeTag	= this.body.endsWith('/>') ? ' />' : '>';
-		if(attrKies.length === 0)
-			html	= this.svg || lowLevelTags.indexOf(this.tagName) !== -1 ? '<' + this.tagName + closeTag : '';
-		else {
+		if(this[REMOVE_TAG_BODY] === true || this[REMOVE_TAG_SYMB] === true){
 			html	= '';
-			attrKies.forEach(attr => {
-				if(attr === 'style'){
-					str	= _joinStyle(attrs.style);
-					if(str !== '')
-						html += ' style="' + he.escape(str) + '"';
-				}
-				else if(attrs[attr])
-					html += ' ' + he.escape(attr) + '="' + he.escape(attrs[attr] + '') + '"';
-			});
-			if(html !== '')
-				html	= '<' + this.tagName + html + closeTag;
-			else if(this.svg || lowLevelTags.indexOf(this.tagName) !== -1)
-				html	= '<' + this.tagName + closeTag;
+		}else{
+			var attrs	= this.attributes;
+			var attrKies= Object.keys(attrs);
+			var str;
+			var closeTag	= this.body.endsWith('/>') ? ' />' : '>';
+			if(attrKies.length === 0)
+				html	= this.svg || lowLevelTags.indexOf(this.tagName) !== -1 ? '<' + this.tagName + closeTag : '';
+			else {
+				html	= '';
+				attrKies.forEach(attr => {
+					if(attr === 'style'){
+						str	= _joinStyle(attrs.style);
+						if(str !== '')
+							html += ' style="' + he.escape(str) + '"';
+					}
+					else if(attrs[attr])
+						html += ' ' + he.escape(attr) + '="' + he.escape(attrs[attr] + '') + '"';
+				});
+				if(html !== '')
+					html	= '<' + this.tagName + html + closeTag;
+				else if(this.svg || lowLevelTags.indexOf(this.tagName) !== -1)
+					html	= '<' + this.tagName + closeTag;
+			}
 		}
 		return html;
 	}
@@ -148,7 +156,7 @@ function htmlClean(html, options){
 		html	= html.replace(/<!--[\s\S]*?-->/g, '');
 
 	// seek HTML
-	var rmTagBody	= false;
+	var parentTag;
 	HTMLSeeker(
 		html,
 		// onTag
@@ -169,7 +177,7 @@ function htmlClean(html, options){
 						tagWrapper = null;
 						break;
 					}
-					else if(rmTagBody === false){
+					else if(tagWrapper[REMOVE_TAG_BODY] !== true){
 						if(tagWrapper[REMOVE_TAG_SYMB] !== true){
 							if(lowLevelTags.indexOf(tagWrapper.tagName) === -1){
 								if(lowLevelTags.indexOf(tagName) === -1)
@@ -183,14 +191,9 @@ function htmlClean(html, options){
 							}
 						}
 					}
-					else{
-						if(tagWrapper === rmTagBody)
-							rmTagBody = false;
-					}
 				} while(true);
 				if(tagWrapper){
-					if(tagWrapper === rmTagBody) // remove this tagBody and content
-						rmTagBody = false;
+					if(tagWrapper[REMOVE_TAG_BODY] === true){} // remove this tagBody and content
 					else if(tagWrapper[REMOVE_TAG_SYMB] === true){} // remove this tag
 					else result += '</' + tagWrapper.tagName + '>';
 				}
@@ -203,8 +206,12 @@ function htmlClean(html, options){
 					[OPTIONS_SYMB]	: options
 				};
 				// parentNode
-				if(stack.length > 0)
-					Object.defineProperty(tagWrapper, 'parentNode', {value: stack[stack.length - 1], enumerable: true});
+				if(stack.length > 0){
+					parentTag	= stack[stack.length - 1];
+					Object.defineProperty(tagWrapper, 'parentNode', {value: parentTag, enumerable: true});
+					if(parentTag[REMOVE_TAG_BODY] === true)
+						tagWrapper[REMOVE_TAG_BODY]	= true;
+				}
 				// if it SVG or SVG element
 				if(tagName === 'svg' || tagWrapper.parentNode && tagWrapper.parentNode.svg === true)
 					tagWrapper.svg = true;
@@ -220,7 +227,7 @@ function htmlClean(html, options){
 					Object.defineProperty(tagWrapper, 'content', {value: tagContent, enumerable: true});
 				Object.setPrototypeOf(tagWrapper, TAG_HELPER);
 				// get user response
-				if(rmTagBody === false){
+				if(tagWrapper[REMOVE_TAG_BODY] !== true){
 					cbResponse	= options.onTag && options.onTag(tagWrapper);
 					if(cbResponse === true) // keep the tag as it is
 						response += tagWrapper.html;
@@ -228,8 +235,7 @@ function htmlClean(html, options){
 						tagWrapper[REMOVE_TAG_SYMB]	= true;
 					else if(typeof cbResponse === 'string'){ // replace all tag and tagBody with this text (empty text to remove it)
 						response += cbResponse;
-						if(tagWrapper.isVoidTag !== true)
-							rmTagBody	= tagWrapper;
+						tagWrapper[REMOVE_TAG_BODY] = true;
 					}
 					else if(typeof cbResponse === 'undefined'){ // default behaviour
 						// images
@@ -240,10 +246,8 @@ function htmlClean(html, options){
 							}
 						}
 						// blacklisted
-						else if(isBlackList){
-							if(tagWrapper.isVoidTag !== true)
-								rmTagBody	= tagWrapper;
-						}
+						else if(isBlackList)
+							tagWrapper[REMOVE_TAG_BODY] = true;
 						// remove tag only
 						else if(RM_TAG_ONLY.indexOf(tagName) !== -1){
 							tagWrapper[REMOVE_TAG_SYMB]	= true;
@@ -261,33 +265,32 @@ function htmlClean(html, options){
 					else throw new Error('uncorrect cb response');
 				}
 				// add tag to stack
-				if(isVoidTag === false){
-					if(rmTagBody !== false)
-						tagWrapper[REMOVE_TAG_SYMB]	= true;
+				if(isVoidTag === false)
 					stack.push(tagWrapper);
-				}
 			}
 		},
 		// onText
 		text => {
-			if(rmTagBody === false){
+			if(
+				stack.length === 0
+				|| stack[stack.length - 1][REMOVE_TAG_BODY] !== true
+			){
 				if(options.keepBlanks !== true)
 					text = text.replace(/\s{2,}/g, "\n").trim();
 				if(text !== '')
-					result += ' ' + text;
+					result += ' ' + text + ' ';
 			}
 		}
 	);
 	// close openning tags
-	if(rmTagBody === false)
-		do{
-			tagWrapper	= stack.pop();
-			if(!tagWrapper) break;
+	do{
+		tagWrapper	= stack.pop();
+		if(!tagWrapper) break;
 
-			if(tagWrapper[REMOVE_TAG_SYMB] !== true){
-				errors.push({tag: tagWrapper.tagName, msg: 'not closed tag, closing it'});
-				result += '</' + tagWrapper.tagName + '>';
-			}
-		} while(true);
+		if(tagWrapper[REMOVE_TAG_BODY] !== true && tagWrapper[REMOVE_TAG_SYMB] !== true){
+			errors.push({tag: tagWrapper.tagName, msg: 'not closed tag, closing it'});
+			result += '</' + tagWrapper.tagName + '>';
+		}
+	} while(true);
 	return result;
 }
