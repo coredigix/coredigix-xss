@@ -77,6 +77,8 @@ function HTMLSeeker(html, onTag, onText){
 					scriptStyle	= false;
 					lastPos 	= pos + 1;
 					tagStart	= false;
+					// send closing tag
+					onTag('/' + tagName, '/' + tagNameLC, str2);
 				}
 			}
 		}
@@ -204,12 +206,12 @@ function htmlAttrSeeker(tagBody, cb){
 	return errors;
 }
 
-const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base,circle,path'.split(','),
-		BLACKLIST			= 'title,script,input,link,meta,base,style,frame,noscript,canvas'.split(','),
+const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base,circle,path,!doctype'.split(','),
+		BLACKLIST			= 'title,meta,script,input,textarea,button,link,base,style,frame,frameset,noscript,canvas,applet,audio,video,select,'.split(','),
 		RM_TAG_ONLY			= 'html,head,body,!doctype,iframe'.split(','),
 		WHITE_ATTRIBUTES	= {
 			'*'		: ['style'],	// all tags
-			'img'	: ['style', 'src', 'srcset', 'width', 'height'],
+			'img'	: ['style', 'src', 'data-src', 'srcset', 'data-srcset', 'width', 'height'],
 			'a'		: ['style', 'href', 'hreflang', 'target', 'download'],
 			'font'	: ['style', 'color', 'face', 'size']
 		},
@@ -287,8 +289,11 @@ const TAG_HELPER = {
 					delete attrs[attrName];
 				}
 			});
+			// if display = none
+			if(/^\s*none\s*$/i.test(attrs.style.display))
+				this[REMOVE_TAG_BODY] = true;
 			// if is not a lowLevelTag and contains no attribute
-			if(
+			else if(
 				Object.keys(attrs).length === 0
 				&& lowLevelTags.indexOf(this.tagName) === -1
 			){
@@ -298,28 +303,32 @@ const TAG_HELPER = {
 	},
 	cleanStyle : cleanStyle,
 	get html(){
-		var attrs	= this.attributes;
-		var attrKies= Object.keys(attrs);
-		var str;
 		var html;
-		var closeTag	= this.body.endsWith('/>') ? ' />' : '>';
-		if(attrKies.length === 0)
-			html	= this.svg || lowLevelTags.indexOf(this.tagName) !== -1 ? '<' + this.tagName + closeTag : '';
-		else {
+		if(this[REMOVE_TAG_BODY] === true || this[REMOVE_TAG_SYMB] === true){
 			html	= '';
-			attrKies.forEach(attr => {
-				if(attr === 'style'){
-					str	= _joinStyle(attrs.style);
-					if(str !== '')
-						html += ' style="' + he.escape(str) + '"';
-				}
-				else if(attrs[attr])
-					html += ' ' + he.escape(attr) + '="' + he.escape(attrs[attr] + '') + '"';
-			});
-			if(html !== '')
-				html	= '<' + this.tagName + html + closeTag;
-			else if(this.svg || lowLevelTags.indexOf(this.tagName) !== -1)
-				html	= '<' + this.tagName + closeTag;
+		}else{
+			var attrs	= this.attributes;
+			var attrKies= Object.keys(attrs);
+			var str;
+			var closeTag	= this.body.endsWith('/>') ? ' />' : '>';
+			if(attrKies.length === 0)
+				html	= this.svg || lowLevelTags.indexOf(this.tagName) !== -1 ? '<' + this.tagName + closeTag : '';
+			else {
+				html	= '';
+				attrKies.forEach(attr => {
+					if(attr === 'style'){
+						str	= _joinStyle(attrs.style);
+						if(str !== '')
+							html += ' style="' + he.escape(str) + '"';
+					}
+					else if(attrs[attr])
+						html += ' ' + he.escape(attr) + '="' + he.escape(attrs[attr] + '') + '"';
+				});
+				if(html !== '')
+					html	= '<' + this.tagName + html + closeTag;
+				else if(this.svg || lowLevelTags.indexOf(this.tagName) !== -1)
+					html	= '<' + this.tagName + closeTag;
+			}
 		}
 		return html;
 	}
@@ -355,6 +364,7 @@ function htmlClean(html, options){
 
 	// seek HTML
 	var parentTag;
+	var addBR	= true; // add <br> when removing a <div> or similar tag
 	HTMLSeeker(
 		html,
 		// onTag
@@ -376,7 +386,12 @@ function htmlClean(html, options){
 						break;
 					}
 					else if(tagWrapper[REMOVE_TAG_BODY] !== true){
-						if(tagWrapper[REMOVE_TAG_SYMB] !== true){
+						if(tagWrapper[REMOVE_TAG_SYMB] === true){
+							if(addBR === true && tagWrapper.svg !== true){
+								result += '<br>';
+								addBR = false;
+							}
+						} else {
 							if(lowLevelTags.indexOf(tagWrapper.tagName) === -1){
 								if(lowLevelTags.indexOf(tagName) === -1)
 									result += '</' + tagWrapper.tagName + '>';
@@ -392,7 +407,12 @@ function htmlClean(html, options){
 				} while(true);
 				if(tagWrapper){
 					if(tagWrapper[REMOVE_TAG_BODY] === true){} // remove this tagBody and content
-					else if(tagWrapper[REMOVE_TAG_SYMB] === true){} // remove this tag
+					else if(tagWrapper[REMOVE_TAG_SYMB] === true){
+						if(addBR === true && tagWrapper.svg !== true){
+							result += '<br>';
+							addBR = false;
+						}
+					} // remove this tag
 					else result += '</' + tagWrapper.tagName + '>';
 				}
 			}
@@ -437,7 +457,7 @@ function htmlClean(html, options){
 					}
 					else if(typeof cbResponse === 'undefined'){ // default behaviour
 						// images
-						if(tagName === 'img'){
+						if(tagName === 'img' || tagName === 'svg'){
 							if(options.img === true){
 								tagWrapper.clean();
 								result += tagWrapper.html;
@@ -475,8 +495,10 @@ function htmlClean(html, options){
 			){
 				if(options.keepBlanks !== true)
 					text = text.replace(/\s{2,}/g, "\n").trim();
-				if(text !== '')
-					result += ' ' + text;
+				if(text !== ''){
+					result += ' ' + text + ' ';
+					addBR	= true; // add <br> if a <div> is removed
+				}
 			}
 		}
 	);

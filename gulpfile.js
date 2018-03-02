@@ -28,8 +28,8 @@ gulp.task('brighter', () => {
 		.pipe(include({
 			hardFail: true
 		}))
-		.pipe(rename('coredigix-xss-brighter.js'))
-		// .pipe(minify())
+		.pipe(rename('coredigix-brighter-xss.js'))
+		.pipe(minify())
 		.pipe(gulp.dest("dist/"))
 		.pipe(gulp.dest('test/chrome-extension/js/'));
 });

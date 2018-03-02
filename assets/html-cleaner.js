@@ -1,10 +1,10 @@
 
 const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base,circle,path,!doctype'.split(','),
-		BLACKLIST			= 'title,script,input,textarea,button,link,meta,base,style,frame,noscript,canvas'.split(','),
+		BLACKLIST			= 'title,meta,script,input,textarea,button,link,base,style,frame,frameset,noscript,canvas,applet,audio,video,select,'.split(','),
 		RM_TAG_ONLY			= 'html,head,body,!doctype,iframe'.split(','),
 		WHITE_ATTRIBUTES	= {
 			'*'		: ['style'],	// all tags
-			'img'	: ['style', 'src', 'srcset', 'width', 'height'],
+			'img'	: ['style', 'src', 'data-src', 'srcset', 'data-srcset', 'width', 'height'],
 			'a'		: ['style', 'href', 'hreflang', 'target', 'download'],
 			'font'	: ['style', 'color', 'face', 'size']
 		},
@@ -157,6 +157,7 @@ function htmlClean(html, options){
 
 	// seek HTML
 	var parentTag;
+	var addBR	= true; // add <br> when removing a <div> or similar tag
 	HTMLSeeker(
 		html,
 		// onTag
@@ -178,7 +179,12 @@ function htmlClean(html, options){
 						break;
 					}
 					else if(tagWrapper[REMOVE_TAG_BODY] !== true){
-						if(tagWrapper[REMOVE_TAG_SYMB] !== true){
+						if(tagWrapper[REMOVE_TAG_SYMB] === true){
+							if(addBR === true && tagWrapper.svg !== true){
+								result += '<br>';
+								addBR = false;
+							}
+						} else {
 							if(lowLevelTags.indexOf(tagWrapper.tagName) === -1){
 								if(lowLevelTags.indexOf(tagName) === -1)
 									result += '</' + tagWrapper.tagName + '>';
@@ -194,7 +200,12 @@ function htmlClean(html, options){
 				} while(true);
 				if(tagWrapper){
 					if(tagWrapper[REMOVE_TAG_BODY] === true){} // remove this tagBody and content
-					else if(tagWrapper[REMOVE_TAG_SYMB] === true){} // remove this tag
+					else if(tagWrapper[REMOVE_TAG_SYMB] === true){
+						if(addBR === true && tagWrapper.svg !== true){
+							result += '<br>';
+							addBR = false;
+						}
+					} // remove this tag
 					else result += '</' + tagWrapper.tagName + '>';
 				}
 			}
@@ -239,7 +250,7 @@ function htmlClean(html, options){
 					}
 					else if(typeof cbResponse === 'undefined'){ // default behaviour
 						// images
-						if(tagName === 'img'){
+						if(tagName === 'img' || tagName === 'svg'){
 							if(options.img === true){
 								tagWrapper.clean();
 								result += tagWrapper.html;
@@ -277,8 +288,10 @@ function htmlClean(html, options){
 			){
 				if(options.keepBlanks !== true)
 					text = text.replace(/\s{2,}/g, "\n").trim();
-				if(text !== '')
+				if(text !== ''){
 					result += ' ' + text + ' ';
+					addBR	= true; // add <br> if a <div> is removed
+				}
 			}
 		}
 	);

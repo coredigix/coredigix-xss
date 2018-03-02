@@ -1560,7 +1560,8 @@ b.src="//radar.cedexis.com/1/10036/radar.js";c.body.appendChild(b)}
           </g>
         </g>
       </svg>
-    </div>`
+    </div>`,
+    `hello <div>test</div> hi`
 ];
 
 function test(ele){
@@ -1570,4 +1571,4 @@ function test(ele){
 	console.log(xss.clean(ele));
 }
 
-test(tests[11]);
+test(tests[12]);
