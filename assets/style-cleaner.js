@@ -1,7 +1,7 @@
 /**
  * clean style
  */
-const	CSS_JS_REGEX	= /javascript\s*:|^expression/i;
+const	CSS_JS_REGEX	= /javascript\s*:|^expression|\bcalc\b/i;
 
 function cleanStyle(){
 	var style 		= this.attributes.style;
