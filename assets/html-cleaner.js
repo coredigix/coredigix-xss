@@ -11,7 +11,7 @@ const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,par
 		WHITE_STYLES	= {
 			'*'	: /^(?:background|border|box|break|clear|color|display|font|height|letter|lighting|list-style|margin|max-height|max-width|min-height|min-width|padding|text|width|word)/i
 		},
-		lowLevelTags	= 'a,b,u,i,var,font,abbr,address,bdi,br,canvas,caption,center,cite,code,em,hr,label,legend,mark,strong,sub,sup,'.split(','),
+		lowLevelTags	= 'a,b,u,i,var,font,abbr,address,bdi,br,canvas,caption,center,cite,code,em,hr,label,legend,mark,strong,sub,sup,img'.split(','),
 		// accept those tags with
 		ACCEPT_TAGS		= 'svg'.split(','),
 
@@ -44,8 +44,7 @@ const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,par
 const TAG_HELPER = {
 	// get tagAttributes
 	get attributes(){
-		var attrs	= {},
-		a;
+		var attrs	= {};
 		Object.defineProperty(attrs, 'style', {get: initStyle, configurable : true, enumerable: true});
 		htmlAttrSeeker(this.body, (attrName, attrValue) => {
 			if(attrName === 'style')
@@ -58,14 +57,6 @@ const TAG_HELPER = {
 			writable: true,
 			enumerable: true
 		});
-		// if image or link, convert relative utl to Absolute
-		if(this[OPTIONS_SYMB].baseURL){
-			a = this.attributes;
-			if(this.tagName === 'a')
-				a.href = this.fixURL(a.href);
-			else if(this.tagName === 'img')
-				a.src = this.fixURL(a.src);
-		}
 		return attrs;
 	},
 	clean	: function(){
@@ -100,6 +91,13 @@ const TAG_HELPER = {
 				&& lowLevelTags.indexOf(this.tagName) === -1
 			){
 				this[REMOVE_TAG_SYMB] = true;
+			}
+			// if image or link, convert relative utl to Absolute
+			else if(this[OPTIONS_SYMB].baseURL){
+				if(this.tagName === 'a')
+					attrs.href = this.fixURL(attrs.href);
+				else if(this.tagName === 'img')
+					attrs.src = this.fixURL(attrs.src);
 			}
 		}
 	},
@@ -145,10 +143,9 @@ const TAG_HELPER = {
 					url = this[OPTIONS_SYMB].baseURLHost + url;
 			}else if(
 				!url.startsWith('data')
-				&& !url.match(/^[^\/]+\:\/\//)
-			){
+				&& !/^[^\/]+\:\/\//.test(url)
+			)
 				url	= this[OPTIONS_SYMB].baseURL + url;
-			}
 		}
 		return url;
 	}
@@ -183,8 +180,8 @@ function htmlClean(html, options){
 		try{
 			var a= options.baseURL.match(/^(([^\/]+\:)\/\/\/?[^\/]+)(?:\/.*\/)?/);
 			if(a){
-				options.baseURLHost	= a[2] + '/';
-				options.baseURLProto= a[1];
+				options.baseURLHost	= a[1];
+				options.baseURLProto= a[2];
 				options.baseURL		= a[0];
 				if(!options.baseURL.endsWith('/'))
 					options.baseURL += '/';
