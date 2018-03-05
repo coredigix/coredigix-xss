@@ -44,7 +44,8 @@ const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,par
 const TAG_HELPER = {
 	// get tagAttributes
 	get attributes(){
-		var attrs	= {};
+		var attrs	= {},
+		a;
 		Object.defineProperty(attrs, 'style', {get: initStyle, configurable : true, enumerable: true});
 		htmlAttrSeeker(this.body, (attrName, attrValue) => {
 			if(attrName === 'style')
@@ -57,6 +58,14 @@ const TAG_HELPER = {
 			writable: true,
 			enumerable: true
 		});
+		// if image or link, convert relative utl to Absolute
+		if(this[OPTIONS_SYMB].baseURL){
+			a = this.attributes;
+			if(this.tagName === 'a')
+				a.href = this.fixURL(a.href);
+			else if(this.tagName === 'img')
+				a.src = this.fixURL(a.src);
+		}
 		return attrs;
 	},
 	clean	: function(){
@@ -124,6 +133,24 @@ const TAG_HELPER = {
 			}
 		}
 		return html;
+	},
+
+	// fix URL	
+	fixURL	: function(url){
+		if(url){
+			if(url.startsWith('/')){
+				if(url.startsWith('//'))
+					url = this[OPTIONS_SYMB].baseURLProto + url;
+				else
+					url = this[OPTIONS_SYMB].baseURLHost + url;
+			}else if(
+				!url.startsWith('data')
+				&& !url.match(/^[^\/]+\:\/\//)
+			){
+				url	= this[OPTIONS_SYMB].baseURL + url;
+			}
+		}
+		return url;
 	}
 };
 
@@ -140,6 +167,7 @@ function _joinStyle(style){
  * @param  {boolean} options.img		= true 		if keep img tag
  * @param  {boolean} options.comments	= false 	if keep HTML comments
  * @param  {boolean} options.keepBlanks	= false		keep blackspaces outside <pre> tag or remove them
+ * @param  {String} options.baseURL		= ""		convert relative links and images to absolut
  * @param  {function} options.onTag		= true 		if include style attribute
  * @param  {Object} options.acceptedAttr 			accepted attributes for each tag
  * @param  {Object} options.acceptedStyle 		accepted style attributes for each tag
@@ -150,6 +178,21 @@ function htmlClean(html, options){
 	var isEndTag, isVoidTag, tagWrapper, isBlackList;
 	var cbResponse;
 	var errors	= []; // store parsing errors
+	// BaseURL
+	if(options.baseURL)
+		try{
+			var a= options.baseURL.match(/^(([^\/]+\:)\/\/\/?[^\/]+)(?:\/.*\/)?/);
+			if(a){
+				options.baseURLHost	= a[2] + '/';
+				options.baseURLProto= a[1];
+				options.baseURL		= a[0];
+				if(!options.baseURL.endsWith('/'))
+					options.baseURL += '/';
+			}
+		} catch(e){
+			delete options.baseURL;
+			console.error('XSS', err);
+		}
 	// HTML comment tag
 	if(!options) options = DEFAULT_OPTIONS;
 	if(options.comments !== true)
@@ -251,6 +294,7 @@ function htmlClean(html, options){
 					else if(typeof cbResponse === 'undefined'){ // default behaviour
 						// images
 						if(tagName === 'img' || tagName === 'svg'){
+							// clean
 							if(options.img === true){
 								tagWrapper.clean();
 								result += tagWrapper.html;
