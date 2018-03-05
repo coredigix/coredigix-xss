@@ -61,12 +61,13 @@ lst.forEach(ele => {
 title('website tests:');
 
 var urls = [
-	'https://developer.mozilla.org/fr/docs/Web/SVG/Element/polyline',
-	'http://www.lefigaro.fr/politique/le-scan/2018/03/01/25001-20180301ARTFIG00158-marine-le-pen-mise-en-examen-pour-des-tweets-diffusant-des-executions-de-daech.php',
-	'http://www.lefigaro.fr/actualite-france/2018/02/27/01016-20180227ARTFIG00250-la-tendance-du-chacun-chez-soi-bouscule-la-definition-du-couple.php',
-	'https://www.google.com/search?q=test&oq=test&aqs=chrome..69i57j69i60l2j69i65l2j69i61.832j0j4&sourceid=chrome&ie=UTF-8',
-	'https://wikitravel.org/en/Marrakech',
-	'https://www.youtube.com/?gl=FR&hl=fr'
+	'http://www.lefigaro.fr'
+	// 'https://developer.mozilla.org/fr/docs/Web/SVG/Element/polyline',
+	// 'http://www.lefigaro.fr/politique/le-scan/2018/03/01/25001-20180301ARTFIG00158-marine-le-pen-mise-en-examen-pour-des-tweets-diffusant-des-executions-de-daech.php',
+	// 'http://www.lefigaro.fr/actualite-france/2018/02/27/01016-20180227ARTFIG00250-la-tendance-du-chacun-chez-soi-bouscule-la-definition-du-couple.php',
+	// 'https://www.google.com/search?q=test&oq=test&aqs=chrome..69i57j69i60l2j69i65l2j69i61.832j0j4&sourceid=chrome&ie=UTF-8',
+	// 'https://wikitravel.org/en/Marrakech',
+	// 'https://www.youtube.com/?gl=FR&hl=fr'
 ];
 
 urls.forEach(url => {

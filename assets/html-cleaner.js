@@ -175,6 +175,8 @@ function htmlClean(html, options){
 	var isEndTag, isVoidTag, tagWrapper, isBlackList;
 	var cbResponse;
 	var errors	= []; // store parsing errors
+	// HTML comment tag
+	if(!options) options = DEFAULT_OPTIONS;
 	// BaseURL
 	if(options.baseURL)
 		try{
@@ -190,8 +192,6 @@ function htmlClean(html, options){
 			delete options.baseURL;
 			console.error('XSS', err);
 		}
-	// HTML comment tag
-	if(!options) options = DEFAULT_OPTIONS;
 	if(options.comments !== true)
 		html	= html.replace(/<!--[\s\S]*?-->/g, '');
 
@@ -301,9 +301,8 @@ function htmlClean(html, options){
 						else if(isBlackList)
 							tagWrapper[REMOVE_TAG_BODY] = true;
 						// remove tag only
-						else if(RM_TAG_ONLY.indexOf(tagName) !== -1){
+						else if(RM_TAG_ONLY.indexOf(tagName) !== -1)
 							tagWrapper[REMOVE_TAG_SYMB]	= true;
-						}
 						// other tags
 						else {
 							tagWrapper.clean();

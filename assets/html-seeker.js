@@ -57,11 +57,11 @@ function HTMLSeeker(html, onTag, onText){
 		else if(attrStart !== false) {
 			if(char === '\\')
 				++pos;
-			else if(attrStart === char)
+			else if(attrStart === char || char === "\n")
 				attrStart = false;
 		}
 		// start Quote
-		else if(char === '"' || char ===  "'")
+		else if((char === '"' || char ===  "'") && !/\w/.test(html.charAt(pos - 1)))
 			attrStart = char;
 		// closing tag
 		else if(char === '>'){
