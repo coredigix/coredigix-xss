@@ -1,6 +1,6 @@
 
 const	VOID_TAGS			= 'img,br,hr,input,area,col,command,embed,keygen,link,meta,param,source,track,wbr,base,circle,path,!doctype'.split(','),
-		BLACKLIST			= 'title,meta,script,input,textarea,button,link,base,style,frame,frameset,noscript,canvas,applet,audio,video,select,'.split(','),
+		BLACKLIST			= 'title,meta,script,input,textarea,button,link,base,style,frame,frameset,noscript,canvas,applet,audio,video,select'.split(','),
 		RM_TAG_ONLY			= 'html,head,body,!doctype,iframe'.split(','),
 		WHITE_ATTRIBUTES	= {
 			'*'		: ['style'],	// all tags
@@ -288,11 +288,11 @@ function htmlClean(html, options){
 				if(tagWrapper[REMOVE_TAG_BODY] !== true){
 					cbResponse	= options.onTag && options.onTag(tagWrapper);
 					if(cbResponse === true) // keep the tag as it is
-						response += tagWrapper.html;
+						result += tagBody;
 					else if(cbResponse === false) // remove this tag (not the whole body)
 						tagWrapper[REMOVE_TAG_SYMB]	= true;
 					else if(typeof cbResponse === 'string'){ // replace all tag and tagBody with this text (empty text to remove it)
-						response += cbResponse;
+						result += cbResponse;
 						tagWrapper[REMOVE_TAG_BODY] = true;
 					}
 					else if(typeof cbResponse === 'undefined'){ // default behaviour
