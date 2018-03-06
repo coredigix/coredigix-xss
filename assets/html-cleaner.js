@@ -59,6 +59,10 @@ const TAG_HELPER = {
 		});
 		return attrs;
 	},
+	/** if the tag is visible by the user */
+	get isHidden(){
+		return /^\s*none\s*(?:!important)?\s*$/i.test(this.attributes.style.display);
+	},
 	clean	: function(){
 		var attrs		= this.attributes;
 		if(this.svg){
@@ -83,7 +87,7 @@ const TAG_HELPER = {
 				}
 			});
 			// if display = none
-			if(/^\s*none\s*$/i.test(attrs.style.display))
+			if(this.isHidden)
 				this[REMOVE_TAG_BODY] = true;
 			// if is not a lowLevelTag and contains no attribute
 			else if(
@@ -96,8 +100,11 @@ const TAG_HELPER = {
 			else if(this[OPTIONS_SYMB].baseURL){
 				if(this.tagName === 'a')
 					attrs.href = this.fixURL(attrs.href);
-				else if(this.tagName === 'img')
+				else if(this.tagName === 'img'){
+					if(attrs.hasOwnProperty('data-src'))
+						attrs.src	= attrs['data-src'];
 					attrs.src = this.fixURL(attrs.src);
+				}
 			}
 		}
 	},
@@ -302,7 +309,7 @@ function htmlClean(html, options){
 							tagWrapper[REMOVE_TAG_BODY] = true;
 						// remove tag only
 						else if(RM_TAG_ONLY.indexOf(tagName) !== -1)
-							tagWrapper[REMOVE_TAG_SYMB]	= true;
+							tagWrapper[tagWrapper.isHidden ? REMOVE_TAG_BODY : REMOVE_TAG_SYMB] = true;
 						// other tags
 						else {
 							tagWrapper.clean();
